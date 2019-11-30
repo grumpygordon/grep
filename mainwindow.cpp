@@ -43,14 +43,21 @@ MainWindow::MainWindow(QWidget* parent)
     if (result.matches.empty()) {
       ui->listWidget->clear();
     }
-    for (size_t i = size_t(shown); i < result.matches.size(); ++i) {
-      ui->listWidget->addItem(result.matches[i]);
-    }
-    auto info = QString("Found %1 occurrences, completed %2 files").arg(
+    bool correct = (QDir(result.file).exists() || QFile(result.file).exists());
+    QString info;
+    if (correct) {
+        for (size_t i = size_t(shown); i < result.matches.size(); ++i) {
+          ui->listWidget->addItem(result.matches[i]);
+        }
+        info = QString("Found %1 occurrences, completed %2 files").arg(
             QString::number(result.found_matches),
             QString::number(result.completed_files));
+    } else {
+        info = "No such file or directory";
+    }
     if (result.finished) {
-      info += " and still way to go";
+      if (correct)
+          info += " and still way to go";
     } else {
       ui->searchButton->setEnabled(true);
       ui->stopButton->setEnabled(false);

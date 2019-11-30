@@ -18,36 +18,37 @@ background_thread::background_thread() : thread([this] {
         current_result.found_matches = 0;
         current_result.completed_files = 0;
         current_result.trouble = false;
+        current_result.file = cur_file;
         enqueue_callback();
-
-        lg.unlock();
-        std::vector<int> pfun;
-        int p_size = cur_pattern.size();
-
-        pfun.reserve(size_t(p_size + 1));
-        int k = -1;
-        pfun.push_back(k);
-        for (auto ch : cur_pattern) {
-            if (cancel.load())
-                break;
-            while (k >= 0 && ch != cur_pattern[k])
-                k = pfun[size_t(k)];
-            k++;
-            pfun.push_back(k);
-        }
-        try {
-            work(cur_pattern, cur_file, pfun);
-        } catch (std::exception const& e) {
-            std::cerr << e.what() << '\n';
-            lg.lock();
-            if (!current_result.trouble) {
-                current_result.trouble = true;
-                current_result.bad_file = cur_file;
-            }
+        if (QDir(cur_file).exists() && QFile(cur_file).exists()) {
             lg.unlock();
-        }
-        lg.lock();
+            std::vector<int> pfun;
+            int p_size = cur_pattern.size();
 
+            pfun.reserve(size_t(p_size + 1));
+            int k = -1;
+            pfun.push_back(k);
+            for (auto ch : cur_pattern) {
+                if (cancel.load())
+                    break;
+                while (k >= 0 && ch != cur_pattern[k])
+                    k = pfun[size_t(k)];
+                k++;
+                pfun.push_back(k);
+            }
+            try {
+                work(cur_pattern, cur_file, pfun);
+            } catch (std::exception const& e) {
+                std::cerr << e.what() << '\n';
+                lg.lock();
+                if (!current_result.trouble) {
+                    current_result.trouble = true;
+                    current_result.bad_file = cur_file;
+                }
+                lg.unlock();
+            }
+            lg.lock();
+        }
         current_result.finished = cancel.load();
         enqueue_callback();
 
@@ -141,8 +142,7 @@ void background_thread::work(QString const& pat, QString const& path, std::vecto
         return;
     }
     QFile f(path);
-    f.open(QIODevice::ReadOnly);
-    if (!f.isOpen())
+    if (!f.open(QIODevice::ReadOnly))
         return;
     size_t constexpr BUFFER_SIZE = 1u << 20u;
     size_t constexpr MAX_RESULTS = 100;

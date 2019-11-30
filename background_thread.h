@@ -26,7 +26,7 @@ public:
         std::vector<QString> matches;
         size_t found_matches{}, completed_files{};
         bool finished{}, trouble{};
-        QString bad_file;
+        QString bad_file, file;
     };
 
     background_thread();
