@@ -2,6 +2,7 @@
 #include <iostream>
 #include <QtCore/QDirIterator>
 #include <QDir>
+#include <QDebug>
 
 background_thread::background_thread() : thread([this] {
     while (true) {
@@ -20,7 +21,7 @@ background_thread::background_thread() : thread([this] {
         current_result.trouble = false;
         current_result.file = cur_file;
         enqueue_callback();
-        if (QDir(cur_file).exists() && QFile(cur_file).exists()) {
+        if (QDir(cur_file).exists() || QFile(cur_file).exists()) {
             lg.unlock();
             std::vector<int> pfun;
             int p_size = cur_pattern.size();
@@ -34,8 +35,15 @@ background_thread::background_thread() : thread([this] {
                 while (k >= 0 && ch != cur_pattern[k])
                     k = pfun[size_t(k)];
                 k++;
+                std::cerr << "k = " << k << '\n';
                 pfun.push_back(k);
             }
+            qDebug() << "pfun is " << pfun.size() << ' ';
+            for (auto i : pfun) {
+                qDebug() << pfun[i] << ' ';
+                std::cerr << pfun[i] << ' ';
+            }
+                qDebug() << '\n';
             try {
                 work(cur_pattern, cur_file, pfun);
             } catch (std::exception const& e) {
@@ -150,7 +158,7 @@ void background_thread::work(QString const& pat, QString const& path, std::vecto
     QTextStream stream(&f);
     QString buffer;
 
-    int k = 0, line = 1, pos = 0;
+    int k = 0, line = 1, pos = 1;
     if (cancel.load())
         return;
     while (!stream.atEnd()) {
